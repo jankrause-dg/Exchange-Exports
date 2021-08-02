@@ -1,0 +1,53 @@
+Disconnect-ExchangeOnline -Confirm:$false -ErrorAction Ignore
+
+#<#
+Import-Module ExchangeOnlineManagement
+Connect-ExchangeOnline -UserPrincipalName admin@domain.onmicrosoft.com -ShowProgress $true
+#>
+
+$Filename = "C:\tmp\export1.csv"
+$Mailboxes = Get-Mailbox
+$Contacts = Get-Contact
+
+echo Mailboxes >>$Filename
+
+echo "userPrincipalName;WindowsEmailAddress;OtherEmailAddress;Alias;RecipientTypeDetails;ForwardingAddress;Permissions;ArchiveStatus" > $Filename
+
+foreach ($Mailbox in $Mailboxes)
+{
+	Write-Host $Mailbox.Alias
+	
+	$Permission = $($Mailbox | Get-MailboxPermission | Where {
+		$_.isInherited -eq $false -and
+		($_.user -notmatch '^NT|^S-' ) 
+	}).User #| Select-Object user #| foreach { Get-Recipient $_.User.ToString().Split('\')[-1] }
+	
+
+	
+	
+	if ($Mailbox.ForwardingAddress)
+	{
+		$Forwarding = $($($Mailbox.ForwardingAddress).DistinguishedName | get-recipient).PrimarySmtpAddress
+	}
+	else
+	{
+		$Forwarding = $null
+	}
+	
+	$AllAddresses = $($($Mailbox).EmailAddresses | where-Object SmtpAddress -ne $Mailbox.WindowsEmailAddress).SmtpAddress
+	
+	
+	echo $($($Mailbox.userPrincipalName) + ";" + $($Mailbox.WindowsEmailAddress) + ";" + $($AllAddresses) + ";" + $($Mailbox.Alias) + ";" + $($Mailbox.RecipientTypeDetails) + ";" + $($Forwarding) + ";" + $($Permission) + ";" + $($Mailbox.ArchiveStatus))>> $Filename
+
+}
+echo . >>$Filename
+echo Kontake >>$Filename
+echo . >>$Filename
+
+foreach ($Contact in $Contacts)
+{
+	Write-Host $Contact.WindowsEmailAddress
+	
+		echo $($($Contact.DisplayName) + ";" + $($Contact.WindowsEMailAddress))>> $Filename
+
+}
